@@ -56,6 +56,8 @@ jobs:
       - name: Validate skill using Rust CLI
         shell: bash
         run: target/release/repodoctor${{ runner.os == 'Windows' && '.exe' || '' }} validate-skill skills/repodoctor
+      - name: SARIF CLI and evidence verification
+        run: python -m unittest discover -s tests -p 'test_sarif_cli.py' -v
       - name: RepoDoctor smoke
         shell: bash
         run: |
