@@ -58,6 +58,8 @@ jobs:
         run: target/release/repodoctor${{ runner.os == 'Windows' && '.exe' || '' }} validate-skill skills/repodoctor
       - name: SARIF CLI and evidence verification
         run: python -m unittest discover -s tests -p 'test_sarif_cli.py' -v
+      - name: Labelled static-rule benchmark
+        run: python -m unittest discover -s tests -p 'test_rule_benchmark.py' -v
       - name: RepoDoctor smoke
         shell: bash
         run: |
