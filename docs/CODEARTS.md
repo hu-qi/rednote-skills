@@ -21,6 +21,12 @@ The CodeArts ZIP contains repodoctor/SKILL.md, repodoctor/README.md, repodoctor/
 
 For the CodeArts CLI's project-scoped Skill, the documented location is `<repo>/.codeartsdoer/skills/repodoctor/`. The personal Skill directory is `~/.codeartsdoer/skills/repodoctor/`. It must contain SKILL.md and the matching native executable. Set executable permissions on Unix when necessary.
 
-## Verification not yet performed
+## 已验证能力与仍需确认的事项
 
-A correctly structured ZIP does **not** prove import or runtime success. Actual CodeArts IDE import, Agent recognition, command invocation permissions, output handling and competition submission must be verified with a real logged-in platform session. Cloud sandboxes may prohibit native executables and require a script or service adapter instead.
+**CodeArts CLI 真实集成已通过：** [GitHub Actions #39218426522](https://github.com/hu-qi/rednote-skills/actions/runs/39218426522) 在临时 Linux Runner 中成功安装 CodeArts CLI、识别项目级 RepoDoctor Skill，通过 `huaweicloud-maas/glm-5.3` 调用 Rust 程序，生成包含 RD001 规则结果的 JSON。验证需要配置正确的 `security.folderTrust.enabled` 和仅针对测试命令的非交互 Bash 授权，并保留 CLI `--sandbox`。上述临时权限配置**不得照搬到不受信任的项目目录**。
+
+**市场发布状态（2026-10-19，用户反馈）：** 华为云 Skill 市场 `repodoctor` 1.0.0 已上架；小红书 SkillHub `repodoctor-cn` 1.0.0（skill_id=101678、version_id=108108）已审核通过上架。详见 [市场中文介绍](MARKETPLACE.zh-CN.md)。
+
+**仍需独立验证：** IDE 图形界面的 ZIP 导入操作、云端沙箱对原生可执行文件的支持范围及两个市场的作品详情页；不要把 Linux Runner CLI 集成成功自动等同于全部宿主环境兼容。后续版本仍需分别验证平台发布。
+
+**注意版本映射：** GitHub v0.2.0 是 CLI 分发版本，两个市场的 1.0.0 是独立市场版本；本仓库变更不会自动更新已发布市场记录。
