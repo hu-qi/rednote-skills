@@ -25,6 +25,16 @@ GitHub Actions repository secrets `AK` and `SK` must contain the CodeArts IAM cr
 
 If `codearts models` fails or the agent cannot execute the Skill in sandbox, CI deliberately fails. Logs and the sanitized `codearts-cli-result-<run_id>` artifact identify the stage without disclosing credentials.
 
+## Model IDs and custom providers
+
+If the CI status is `primary_model_not_listed`, the official CLI already authenticated and listed models, but the configured primary display name is not one of the available IDs.
+
+The sanitized result artifact includes only **Huawei built-in model IDs** and a boolean indicating whether the fallback name was present; custom provider model names are deliberately omitted.
+
+You may set repository **Variables** (not Secrets) `CODEARTS_PRIMARY_MODEL` and `CODEARTS_FALLBACK_MODEL` to the exact `provider/model` IDs returned by `codearts models` on the same runner. Default names remain `glm-5.3-flash` and `Gemini-3.8-Flash-Medium`.
+
+User-created Gemini models stored in `~/.codeartsdoer/codearts_cli.json` on a Mac are **not automatically installed on GitHub Actions runners**. A separate, consented custom-provider configuration and its API key are required to enable the fallback in CI; AK/SK alone do not configure that model. Do not commit API keys or copy a workstation's encrypted CLI config into the repository.
+
 ## Submission attempt — manual only
 
 After a passing CodeArts smoke run:
