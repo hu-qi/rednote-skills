@@ -194,6 +194,41 @@ def diagnose_model_listing(result):
     }
 
 
+def record_encrypted_model_error(error_text, cwd):
+    """Opt-in ephemeral CI diagnostic; only a public certificate is committed.
+
+    Raw output is never printed or uploaded. Any cleartext temp file is removed.
+    """
+    if os.environ.get("CODEARTS_CI_ENCRYPT_DIAGNOSTIC") != "1":
+        return False
+    cert = Path(cwd) / "tools" / "codearts-debug.crt"
+    runner_temp = os.environ.get("RUNNER_TEMP")
+    if not runner_temp or not cert.is_file():
+        return False
+    output_dir = Path(runner_temp) / "codearts-summary"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_file = output_dir / "models-error.cms"
+    # Even encrypted artifacts should not unnecessarily retain secrets.
+    for key in ("CODEARTS_CLI_AK", "CODEARTS_CLI_SK"):
+        secret = os.environ.get(key)
+        if secret:
+            error_text = error_text.replace(secret, "[REDACTED_SECRET]")
+    with tempfile.TemporaryDirectory(prefix="codearts-opaque-", dir=runner_temp) as folder:
+        plaintext = Path(folder) / "error.txt"
+        plaintext.write_text(error_text, encoding="utf-8")
+        plaintext.chmod(0o600)
+        encrypted = subprocess.run(
+            ["openssl", "cms", "-encrypt", "-binary", "-aes-256-cbc",
+             "-outform", "DER", "-in", str(plaintext),
+             "-out", str(output_file), str(cert)],
+            capture_output=True, check=False,
+        )
+    if encrypted.returncode:
+        output_file.unlink(missing_ok=True)
+        return False
+    return True
+
+
 def choose_and_run(prompt, cwd, primary=DEFAULT_PRIMARY, fallback=DEFAULT_FALLBACK, timeout=300):
     models = invoke(["codearts", "models"], cwd, 45)
     list_attempts = 1
@@ -207,7 +242,9 @@ def choose_and_run(prompt, cwd, primary=DEFAULT_PRIMARY, fallback=DEFAULT_FALLBA
         models = invoke(["codearts", "models"], cwd, 45)
         list_attempts += 1
     if models.returncode:
+        encrypted = record_encrypted_model_error(models.stdout + "\n" + models.stderr, cwd)
         return {"status": "models_failed", "model": None, "text": "",
+                "encrypted_diagnostic": encrypted,
                 "error_kind": classify_cli_error(models.stdout + "\n" + models.stderr),
                 "model_list_attempts": list_attempts,
                 "model_list_diagnostic": diagnose_model_listing(models),
@@ -308,6 +345,7 @@ def main():
                 summary["error_kind"] = invoked.get("error_kind")
                 summary["model_list_diagnostic"] = invoked.get("model_list_diagnostic")
                 summary["model_list_attempts"] = invoked.get("model_list_attempts")
+                summary["encrypted_diagnostic"] = invoked.get("encrypted_diagnostic", False)
                 if output.is_file():
                     try:
                         report = json.loads(output.read_text(encoding="utf-8"))
