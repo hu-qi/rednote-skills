@@ -140,12 +140,32 @@ class CodeArtsCiUnitTests(unittest.TestCase):
 
     def test_smoke_fixture_contains_expected_rule(self):
         with tempfile.TemporaryDirectory() as folder:
-            prompt, report = ci.build_smoke(ROOT, Path(folder))
+            prompt, report, command = ci.build_smoke(ROOT, Path(folder))
             self.assertIn("repodoctor scan", prompt)
+            self.assertIn("repodoctor scan", command)
             self.assertIn("RD001", prompt)
             self.assertIn("permissions: write-all",
                           (Path(folder) / "fixture/.github/workflows/ci.yml").read_text())
             self.assertFalse(report.exists())
+
+    def test_exact_scanner_permission_is_narrow_and_ephemeral(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(Path, "home", return_value=Path(folder)):
+                with patch.dict("os.environ", {"CODEARTS_CI_ALLOW_EXACT_SCANNER": "1"}):
+                    cmd = ".codeartsdoer/skills/repodoctor/bin/repodoctor scan /tmp/fixture --format json --output /tmp/result.json"
+                    self.assertTrue(ci.allow_exact_ci_scanner_command(cmd))
+                    saved = Path(folder) / ".codeartsdoer/cli-data/storage/permission/global.json"
+                    import json
+                    rules = json.loads(saved.read_text())
+                    self.assertEqual(len(rules), 2)
+                    self.assertEqual(rules[0]["pattern"], cmd)
+                    self.assertEqual(rules[0]["action"], "allow")
+                    self.assertNotIn("*", rules[0]["pattern"])
+                    self.assertEqual(rules[1]["pattern"], "./" + cmd)
+                    self.assertTrue(ci.allow_exact_ci_scanner_command(cmd))
+                    self.assertEqual(len(json.loads(saved.read_text())), 2)
+                    with self.assertRaises(ValueError):
+                        ci.allow_exact_ci_scanner_command(cmd + "; env")
 
     def test_submission_prompt_matches_official_two_market_sequence(self):
         prompt = ci.submission_prompt(ROOT)

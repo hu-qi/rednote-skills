@@ -264,6 +264,40 @@ def choose_and_run(prompt, cwd, primary=DEFAULT_PRIMARY, fallback=DEFAULT_FALLBA
     return {"status": "no_usable_model", "attempted": attempted, "text": "", "exit": 5}
 
 
+def allow_exact_ci_scanner_command(command):
+    """Permit one synthetic RepoDoctor scan, not unrestricted Agent shell access."""
+    if os.environ.get("CODEARTS_CI_ALLOW_EXACT_SCANNER") != "1":
+        return False
+    if not command.startswith(".codeartsdoer/skills/repodoctor/bin/repodoctor scan "):
+        raise ValueError("CI permission only supports the known RepoDoctor binary")
+    if any(char in command for char in (";", "|", "&", "\n", "\r", "$", chr(96))):
+        raise ValueError("unexpected shell metacharacter in scanner permission")
+    config = Path.home() / ".codeartsdoer/cli-data/storage/permission/global.json"
+    config.parent.mkdir(parents=True, exist_ok=True)
+    if config.is_file():
+        entries = json.loads(config.read_text(encoding="utf-8"))
+        if not isinstance(entries, list):
+            raise ValueError("CodeArts permission/global.json must be a JSON array")
+    else:
+        entries = []
+    # Exact-match allowlist means an Agent cannot append arbitrary commands.
+    for allowed in (command, "./" + command):
+        entry = {"permission": "bash", "pattern": allowed, "action": "allow"}
+        if entry not in entries:
+            entries.append(entry)
+    with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8",
+                                     prefix=".permissions-", dir=config.parent,
+                                     delete=False) as fh:
+        json.dump(entries, fh, ensure_ascii=False)
+        temporary = Path(fh.name)
+    try:
+        temporary.chmod(0o600)
+        temporary.replace(config)
+    finally:
+        temporary.unlink(missing_ok=True)
+    return True
+
+
 def build_smoke(root, scratch):
     fixture = scratch / "fixture"
     (fixture / ".github" / "workflows").mkdir(parents=True)
@@ -272,15 +306,18 @@ def build_smoke(root, scratch):
         encoding="utf-8",
     )
     destination = scratch / "codearts-repodoctor-report.json"
+    command = (
+        ".codeartsdoer/skills/repodoctor/bin/repodoctor scan "
+        + str(fixture) + " --format json --output " + str(destination)
+    )
     prompt = (
         "这是 CodeArts CLI + RepoDoctor Skill 集成验收。请真正使用已安装的 repodoctor Skill，"
         "调用其 Rust 可执行程序对下面的无敏感信息测试目录做只读扫描，不要仅凭文字猜测结果。"
-        "必须调用命令 .codeartsdoer/skills/repodoctor/bin/repodoctor scan "
-        + str(fixture) + " --format json --output " + str(destination)
+        "必须调用命令 " + command
         + " 。不要修改源文件、联网、打印环境变量或读取仓库其他内容。"
         "完成后只回答测试是否找到 RD001，不需要展示任何环境变量。"
     )
-    return prompt, destination
+    return prompt, destination, command
 
 
 def submission_prompt(root):
@@ -318,7 +355,8 @@ def main():
         root = Path.cwd()
         if args.phase == "smoke":
             with tempfile.TemporaryDirectory(prefix="repodoctor-codearts-ci-") as tmp:
-                prompt, output = build_smoke(root, Path(tmp))
+                prompt, output, scanner_command = build_smoke(root, Path(tmp))
+                summary["exact_scanner_permission"] = allow_exact_ci_scanner_command(scanner_command)
                 invoked = choose_and_run(prompt, root, args.primary, args.fallback, args.timeout)
                 summary["model"] = invoked.get("model")
                 summary["status"] = invoked["status"]
