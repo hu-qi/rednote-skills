@@ -1,22 +1,29 @@
-# Roadmap
+# RepoDoctor competition delivery plan
 
-## P0 — RepoDoctor competition entry
-- [x] Initialize multi-Skill Rust-first monorepo
-- [x] Implement offline local-file preflight rules and JSON/Markdown output
-- [ ] Verify GitHub Actions CI on PR and fix compiler/test issues
-- [ ] Prove Huawei CodeArts imports and invokes SKILL.md
-- [ ] Reduce false positives using AST/tree-sitter or precise parsing
-- [ ] Define benchmark corpus with true positives/false positives
-- [ ] Add GitHub repository read-only ingestion with authorization
-- [ ] Capture before/after proof using isolated, explicitly approved tests
+## P0 — Source and CI
+- [x] Rust-first read-only diagnostic engine and structured reports
+- [x] Unit tests and Linux CI smoke checks
+- [x] Versioned, independently packaged Skill archives with manifests and SHA-256
+- [x] Offline archive verifier, input constraints, traversal and tampering tests
+- [ ] Restore strict rustfmt checks (CI currently formats source before lint)
+- [ ] Verify release matrix on four OS / architecture runners
+- [ ] Add fixture corpus for accuracy and false-positive measurement
+- [ ] Manual Huawei CodeArts Skill import / real invocation evidence
 
-## P1 — Distribution
-- [ ] Skill manifest schema and integrity validation
-- [ ] Semantic-versioned release packaging for Linux/macOS/Windows
-- [ ] Installer/updater with checksum and rollback
-- [ ] Compatibility tests across CodeArts and supported Skill runtimes
+## P1 — Evidence-first diagnosis
+- [ ] Parse languages / GitHub Action YAML rather than pattern matching
+- [ ] Read-only GitHub ingestion with strict authorization and rate limits
+- [ ] Evidence classification and reproducer / isolated verified repair
+- [ ] SARIF and redacted shareable report
+- [ ] Evaluate on real public repos and publish measured precision
 
-## P2 — Future Skills
-- [ ] VibeCoding Pet: event schema, hook integration, privacy-safe display
-- [ ] Rednote Creator Lab: drafts, factual provenance, feedback loop
-- [ ] Optional LLM provider abstraction, redaction, cost/time limits
+## P1 — Skill distribution
+- [ ] Release version consistency / tag guard
+- [ ] Install / update / rollback CLI with manifest verification and user opt-in
+- [ ] Signing / provenance and reproducibility across builders
+- [ ] User testing with CodeArts and competition submission checklist
+
+## P2 — Other Skills
+- [ ] VibeCoding Pet
+- [ ] Rednote Creator Lab
+- [ ] Optional LLM provider with redaction and quotas
