@@ -47,7 +47,7 @@ fn walk(root: &Path, current: &Path, report: &mut Report) -> std::io::Result<()>
             if workflow && (trimmed == "permissions: write-all" || trimmed.starts_with("permissions: write-all #")) {
                 add("RD001", "high", "Broad workflow write permission");
             }
-            if workflow && (trimmed.starts_with("pull_request_target:") || trimmed == "- pull_request_target") {
+            if workflow && (trimmed.starts_with("pull_request_target:") || trimmed == "- pull_request_target" || trimmed.contains("[pull_request_target]")) {
                 add("RD002", "medium", "Fork trust boundary requires manual review");
             }
             if !commented && rel.ends_with(".py") && ["subprocess.run(", "subprocess.call(", "subprocess.Popen(", "subprocess.check_output(", "subprocess.check_call("].iter().any(|name| trimmed.contains(name)) && trimmed.replace(" ", "").contains("shell=True") {
