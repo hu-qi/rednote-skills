@@ -24,6 +24,22 @@ class CodeArtsCiUnitTests(unittest.TestCase):
                          "custom/Gemini-3.8-Flash-Medium")
         self.assertIsNone(ci.resolve_model(table, "unconfigured-model"))
 
+    def test_primary_qualified_model_id_matches_exact_provider(self):
+        table = (
+            "model_id model_name\\n"
+            "other/glm-5.3 GLM-5.3\\n"
+            "huaweicloud-maas/glm-5.3 GLM-5.3\\n"
+        )
+        self.assertEqual(
+            ci.resolve_model(table, "huaweicloud-maas/glm-5.3"),
+            "huaweicloud-maas/glm-5.3",
+        )
+        self.assertIsNone(ci.resolve_model(table, "custom/glm-5.3"))
+        self.assertEqual(
+            ci.resolve_model(table, "glm-5.3"),
+            "other/glm-5.3",
+        )
+
     def test_builtin_models_do_not_include_private_custom_provider_names(self):
         table = ("model_id model_name\n"
                  "huaweicloud-maas/GLM-5.2 GLM-5.2\n"
