@@ -5,7 +5,8 @@
 - [x] Three-platform CI test/build matrix and tag-gated zip distribution pipeline
 - [ ] Actually publish a release tag and verify downloaded archives
 - [ ] Import Skill into CodeArts and execute from the host runtime
-- [ ] Test platform filesystem, OS, command execution permissions and packaging size
+- [x] Build a dedicated CodeArts ZIP layout with repodoctor/ root and 5 MiB compressed limit in CI
+- [ ] Test CodeArts import, filesystem, OS, permissions and actual command execution on the platform
 - [ ] Establish labeled evaluation dataset; report false positives and false negatives
 - [ ] Produce authorized before/after reproducibility demo
 - [ ] Test at least two external repositories with representative language/CI patterns
