@@ -16,7 +16,7 @@ import sys
 import tempfile
 from urllib.parse import urlparse
 
-DEFAULT_PRIMARY = "glm-5.3-flash"
+DEFAULT_PRIMARY = "huaweicloud-maas/glm-5.3"
 DEFAULT_FALLBACK = "Gemini-3.8-Flash-Medium"
 QUOTA_MARKERS = (
     "quota", "insufficient balance", "rate limit", "rate_limit", "too many requests",
@@ -35,12 +35,18 @@ def normalize(text):
 def resolve_model(table, desired):
     """Only use a model actually advertised by codearts models."""
     wanted = normalize(desired)
+    provider_qualified = "/" in desired
     for line in ANSI.sub("", table).splitlines():
         columns = line.split()
         if not columns or columns[0].casefold() == "model_id":
             continue
         model_id = columns[0]
-        # Match full displayed model ID suffix OR human-readable model name.
+        # Prefer exact provider/model IDs. A qualified request must never
+        # silently match a different provider with the same model name.
+        if provider_qualified:
+            if normalize(model_id) == wanted:
+                return model_id
+            continue
         if normalize(model_id.split("/")[-1]) == wanted:
             return model_id
         if any(normalize(column) == wanted for column in columns[1:]):
