@@ -6,6 +6,7 @@ Submission receipts require human verification in both marketplaces.
 """
 import argparse
 import hashlib
+import time
 import json
 import os
 from pathlib import Path
@@ -95,6 +96,10 @@ def classify_cli_error(body):
     if any(value in lower for value in ("timeout", "timed out", "dns", "econnreset", "econnrefused",
                                         "network error", "connection refused", "连接失败")):
         return "network"
+    if any(value in lower for value in ("internal server error", "bad gateway",
+                                        "service unavailable", "gateway timeout", "503", "502", "500", "504",
+                                        "服务异常", "服务器错误", "请求失败")):
+        return "service_or_gateway"
     if any(value in lower for value in ("not found", "unknown command", "unsupported",
                                         "unknown option", "not a command")):
         return "cli_incompatible"
@@ -118,8 +123,27 @@ def diagnose_model_listing(result):
         "http_4xx": ("400", "401", "403", "404", "429"),
     }
     # Lengths, flags, exit code and a short fingerprint cannot reveal AK/SK.
+    allowed_error_tokens = {
+        "failed", "error", "request", "response", "server", "service", "gateway",
+        "timeout", "unavailable", "internal", "authentication", "unauthorized",
+        "authorization", "permission", "invalid", "signature", "credentials",
+        "model", "models", "provider", "network", "connection", "fetch", "http",
+        "https", "axios", "api", "status", "code", "retry", "unknown", "session",
+        "region", "endpoint", "proxy", "certificate", "tls", "connect",
+        "runtime", "exception", "notfound", "denied", "message", "login",
+    }
+    safe_keywords = sorted(
+        set(re.findall(r"[a-zA-Z]{3,}", low)) & allowed_error_tokens
+    )
+    # Require HTTP context to avoid mistaking random numeric IDs for HTTP codes.
+    status_codes = sorted(set(re.findall(
+        r"(?:http(?:/\d(?:\.\d)?)?\s*|status(?:\s+code)?\s*[:=]?\s*)([45]\d\d)\b",
+        low,
+    )))
     return {
         "exit_code": result.returncode,
+        "http_status_codes": status_codes,
+        "safe_error_keywords": safe_keywords[:20],
         "stdout_chars": len(result.stdout or ""),
         "stderr_chars": len(result.stderr or ""),
         "output_fingerprint_12": hashlib.sha256(content.encode("utf-8")).hexdigest()[:12],
@@ -136,9 +160,20 @@ def diagnose_model_listing(result):
 
 def choose_and_run(prompt, cwd, primary=DEFAULT_PRIMARY, fallback=DEFAULT_FALLBACK, timeout=300):
     models = invoke(["codearts", "models"], cwd, 45)
+    list_attempts = 1
+    # A CI runner may hit transient CodeArts upstream gateway failures.
+    # Retry only service/network/timeout problems, never credential errors.
+    while models.returncode and list_attempts < 3:
+        category = classify_cli_error(models.stdout + "\n" + models.stderr)
+        if category not in ("service_or_gateway", "network"):
+            break
+        time.sleep(list_attempts * 2)
+        models = invoke(["codearts", "models"], cwd, 45)
+        list_attempts += 1
     if models.returncode:
         return {"status": "models_failed", "model": None, "text": "",
                 "error_kind": classify_cli_error(models.stdout + "\n" + models.stderr),
+                "model_list_attempts": list_attempts,
                 "model_list_diagnostic": diagnose_model_listing(models),
                 "exit": models.returncode}
     primary_id = resolve_model(models.stdout, primary)
@@ -236,6 +271,7 @@ def main():
                 summary["attempted_models"] = invoked.get("attempted", [])
                 summary["error_kind"] = invoked.get("error_kind")
                 summary["model_list_diagnostic"] = invoked.get("model_list_diagnostic")
+                summary["model_list_attempts"] = invoked.get("model_list_attempts")
                 if output.is_file():
                     try:
                         report = json.loads(output.read_text(encoding="utf-8"))

@@ -69,6 +69,29 @@ class CodeArtsCiUnitTests(unittest.TestCase):
         self.assertEqual(detail["exit_code"], 2)
         self.assertEqual(detail["stdout_chars"], len(result.stdout))
 
+    def test_http_service_failure_is_retried_but_not_auth_failure(self):
+        listing = ("model_id model_name\n"
+                   "huaweicloud-maas/glm-5.3-flash GLM-5.3-Flash\n")
+        outputs = [
+            subprocess.CompletedProcess([], 1, "", "HTTP 503 Service Unavailable"),
+            subprocess.CompletedProcess([], 0, listing, ""),
+            subprocess.CompletedProcess([], 0, '{"ok":true}', ""),
+        ]
+        with patch.object(ci, "invoke", side_effect=outputs) as mocked, \
+             patch.object(ci.time, "sleep") as wait:
+            result = ci.choose_and_run("safe prompt", ROOT)
+        self.assertEqual(result["status"], "cli_completed")
+        self.assertEqual(mocked.call_count, 3)
+        wait.assert_called_once()
+
+    def test_http_status_diagnostic_uses_allowlisted_categories(self):
+        failure = subprocess.CompletedProcess([], 1, "", "HTTP 503 Service Unavailable. Secret=VERY_PRIVATE")
+        detail = ci.diagnose_model_listing(failure)
+        self.assertEqual(detail["http_status_codes"], ["503"])
+        self.assertIn("service", detail["safe_error_keywords"])
+        self.assertNotIn("VERY_PRIVATE", repr(detail))
+        self.assertEqual(ci.classify_cli_error(failure.stderr), "service_or_gateway")
+
     def test_urls_are_deidentified_and_not_treated_as_publication_proof(self):
         candidates = ci.allowed_receipts(
             "https://example.com/private?token=SECRET "
