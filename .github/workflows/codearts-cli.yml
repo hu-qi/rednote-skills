@@ -76,6 +76,7 @@ jobs:
           CODEARTS_CLI_AK: ${{ secrets.AK }}
           CODEARTS_CLI_SK: ${{ secrets.SK }}
           PHASE: ${{ github.event.inputs.phase || 'smoke' }}
+          CODEARTS_CI_ENCRYPT_DIAGNOSTIC: "1"
         run: |
           set -euo pipefail
           mkdir -p "${RUNNER_TEMP}/codearts-summary"
@@ -86,6 +87,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: codearts-cli-result-${{ github.run_id }}
-          path: ${{ runner.temp }}/codearts-summary/result.json
+          path: ${{ runner.temp }}/codearts-summary/
           if-no-files-found: warn
           retention-days: 14
