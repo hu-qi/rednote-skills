@@ -1,8 +1,8 @@
-# RepoDoctor reproducible distributions
+# RepoDoctor distribution and verification
 
-RepoDoctor is a Rust CLI bundled alongside its portable SKILL.md. Source remains the authoritative artifact.
+RepoDoctor uses a Rust CLI bundled with its portable `SKILL.md`. Build and integrity validation use Python 3's standard library.
 
-## Build and verify
+## Build
 
 ```bash
 cargo build --release
@@ -11,16 +11,26 @@ python3 tools/skill_dist.py package --binary target/release/repodoctor --platfor
 python3 tools/skill_dist.py verify dist/repodoctor-v0.1.0-macos-aarch64.zip
 ```
 
-The zip contains `SKILL.md`, `README.md`, `bin/repodoctor` (or `.exe`) and `manifest.json`. Manifest hashes protect payload integrity; signed provenance is future work. The archive is limited to <= 30 entries and <= 40 MiB uncompressed. The binary is limited to 30 MiB.
+Each zip includes a native executable, `SKILL.md`, `README.md`, and `manifest.json` with hashes. The archive limit is 30 entries and 40 MiB uncompressed. Manifest integrity is not a signature: always obtain artifacts and SHA256SUMS from the trusted project release.
 
-Builds are published by the `repodoctor-distribution` workflow on `repodoctor/v*` tags; manual dispatch produces downloadable Actions artifacts but does not publish a Release. Current release version is 0.1.0. Do not tag a different version without updating VERSION in the packager.
+## Explicit local installation
 
-## Install
+Only install archives from a source you trust. Verify their published SHA256SUMS first.
 
-Download the archive appropriate for your platform and verify the published SHA256SUMS before extracting. Run `python3 tools/skill_dist.py verify <archive>` if the source checkout is available. Extract into a **user-selected** skills directory and configure CodeArts or another compatible Skill runner to load the extracted `SKILL.md`; the environment must be able to execute the platform binary in `bin/`.
+```bash
+python3 tools/install_skill.py install dist/repodoctor-v0.1.0-macos-aarch64.zip --destination "$HOME/.agents/skills/repodoctor"
+# For an opt-in upgrade:
+python3 tools/install_skill.py install dist/repodoctor-v0.1.0-macos-aarch64.zip --destination "$HOME/.agents/skills/repodoctor" --replace
+# Restore the backup:
+python3 tools/install_skill.py rollback --destination "$HOME/.agents/skills/repodoctor"
+```
 
-The specific CodeArts deployment/import flow is not yet independently verified. Do not claim official marketplace publication or compatibility based on GitHub CI alone.
+The installer checks manifest hashes before extraction, rejects traversal and symlink archive entries, never silently overwrites the active Skill, and retains one previous installation at `repodoctor.previous`. Rolled-back versions are saved under `repodoctor.replaced` for inspection. Remove these backup directories explicitly before subsequent upgrades.
 
-## Upgrade policy
+The CLI does not automatically configure CodeArts, update skills, authenticate to GitHub, or execute repository code. Users must configure their target Skill runner to load the installed `SKILL.md` and make its packaged native binary available. Official CodeArts import is still unverified.
 
-Users pin versions. Installation/upgrade is explicit only; no self-update or remote script execution. Rollback is achieved by reinstalling an earlier verified archive. Automatic updater is planned, not shipped.
+## Releases
+
+The `repodoctor-distribution` workflow creates per-platform archives on tag `repodoctor/v*`. Manual workflow dispatch produces Actions artifacts, not a public GitHub Release. Do not cut a new version tag without updating the packager's version constant and testing all supported target platforms.
+
+Automatic remote upgrades and signed provenance are not implemented.
