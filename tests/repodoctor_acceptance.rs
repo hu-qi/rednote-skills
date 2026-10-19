@@ -1,5 +1,5 @@
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -13,7 +13,7 @@ fn fixture() -> PathBuf {
     root
 }
 
-fn run(root: &PathBuf, format: &str) -> String {
+fn run(root: &Path, format: &str) -> String {
     let result = Command::new(env!("CARGO_BIN_EXE_repodoctor"))
         .args(["scan", root.to_str().unwrap(), "--format", format])
         .output()
