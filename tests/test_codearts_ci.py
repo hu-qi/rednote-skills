@@ -24,6 +24,22 @@ class CodeArtsCiUnitTests(unittest.TestCase):
                          "custom/Gemini-3.8-Flash-Medium")
         self.assertIsNone(ci.resolve_model(table, "unconfigured-model"))
 
+    def test_primary_qualified_model_id_matches_exact_provider(self):
+        table = (
+            "model_id model_name\n"
+            "other/glm-5.3 GLM-5.3\n"
+            "huaweicloud-maas/glm-5.3 GLM-5.3\n"
+        )
+        self.assertEqual(
+            ci.resolve_model(table, "huaweicloud-maas/glm-5.3"),
+            "huaweicloud-maas/glm-5.3",
+        )
+        self.assertIsNone(ci.resolve_model(table, "custom/glm-5.3"))
+        self.assertEqual(
+            ci.resolve_model(table, "glm-5.3"),
+            "other/glm-5.3",
+        )
+
     def test_builtin_models_do_not_include_private_custom_provider_names(self):
         table = ("model_id model_name\n"
                  "huaweicloud-maas/GLM-5.2 GLM-5.2\n"
@@ -35,7 +51,7 @@ class CodeArtsCiUnitTests(unittest.TestCase):
         )
 
     def test_only_quota_failure_activates_fallback(self):
-        table = "model_id model_name\nhuaweicloud-maas/glm-5.3-flash GLM-5.3-Flash\ncustom/Gemini-3.8-Flash-Medium Gemini-3.8-Flash-Medium\n"
+        table = "model_id model_name\nhuaweicloud-maas/glm-5.3 GLM-5.3-Flash\ncustom/Gemini-3.8-Flash-Medium Gemini-3.8-Flash-Medium\n"
         outputs = [
             subprocess.CompletedProcess([], 0, table, ""),
             subprocess.CompletedProcess([], 1, "", "HTTP 429 quota exceeded"),
@@ -50,7 +66,7 @@ class CodeArtsCiUnitTests(unittest.TestCase):
         self.assertNotIn("--auto", mocked.call_args.args[0])
 
     def test_authentication_or_generic_failure_must_not_fallback(self):
-        table = "model_id model_name\nhuaweicloud-maas/glm-5.3-flash GLM\ncustom/Gemini-3.8-Flash-Medium Gemini\n"
+        table = "model_id model_name\nhuaweicloud-maas/glm-5.3 GLM\ncustom/Gemini-3.8-Flash-Medium Gemini\n"
         outputs = [
             subprocess.CompletedProcess([], 0, table, ""),
             subprocess.CompletedProcess([], 1, "", "permission denied"),
@@ -81,7 +97,7 @@ class CodeArtsCiUnitTests(unittest.TestCase):
 
     def test_http_service_failure_is_retried_but_not_auth_failure(self):
         listing = ("model_id model_name\n"
-                   "huaweicloud-maas/glm-5.3-flash GLM-5.3-Flash\n")
+                   "huaweicloud-maas/glm-5.3 GLM-5.3-Flash\n")
         outputs = [
             subprocess.CompletedProcess([], 1, "", "HTTP 503 Service Unavailable"),
             subprocess.CompletedProcess([], 0, listing, ""),

@@ -31,7 +31,7 @@ If the CI status is `primary_model_not_listed`, the official CLI already authent
 
 The sanitized result artifact includes only **Huawei built-in model IDs** and a boolean indicating whether the fallback name was present; custom provider model names are deliberately omitted.
 
-You may set repository **Variables** (not Secrets) `CODEARTS_PRIMARY_MODEL` and `CODEARTS_FALLBACK_MODEL` to the exact `provider/model` IDs returned by `codearts models` on the same runner. Default names remain `glm-5.3-flash` and `Gemini-3.8-Flash-Medium`.
+You may set repository **Variables** (not Secrets) `CODEARTS_PRIMARY_MODEL` and `CODEARTS_FALLBACK_MODEL` to the exact `provider/model` IDs returned by `codearts models` on the same runner. Current CI defaults are the confirmed built-in identifier `huaweicloud-maas/glm-5.3` and the optional custom model name `Gemini-3.8-Flash-Medium`. The latter is only usable if the runner has a configured provider.
 
 User-created Gemini models stored in `~/.codeartsdoer/codearts_cli.json` on a Mac are **not automatically installed on GitHub Actions runners**. A separate, consented custom-provider configuration and its API key are required to enable the fallback in CI; AK/SK alone do not configure that model. Do not commit API keys or copy a workstation's encrypted CLI config into the repository.
 
