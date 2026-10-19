@@ -117,7 +117,7 @@ jobs:
           CODEARTS_CLI_AK: ${{ secrets.AK }}
           CODEARTS_CLI_SK: ${{ secrets.SK }}
           PHASE: ${{ github.event.inputs.phase || 'smoke' }}
-          PRIMARY_MODEL: ${{ vars.CODEARTS_PRIMARY_MODEL || 'glm-5.3-flash' }}
+          PRIMARY_MODEL: ${{ vars.CODEARTS_PRIMARY_MODEL || 'huaweicloud-maas/glm-5.3' }}
           FALLBACK_MODEL: ${{ vars.CODEARTS_FALLBACK_MODEL || 'Gemini-3.8-Flash-Medium' }}
         run: |
           set -euo pipefail
