@@ -1,0 +1,91 @@
+name: codearts-cli-integration
+on:
+  push:
+    branches: [main]
+    paths:
+      - "skills/repodoctor/**"
+      - "tools/codearts_ci.py"
+      - ".github/workflows/codearts-cli.yml"
+  workflow_dispatch:
+    inputs:
+      phase:
+        description: "smoke (read-only) or submit (attempt publishing in both markets)"
+        type: choice
+        required: true
+        default: smoke
+        options:
+          - smoke
+          - submit
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codearts-cli-${{ github.ref }}-${{ github.event.inputs.phase || 'smoke' }}
+  cancel-in-progress: false
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Build RepoDoctor native CLI
+        run: cargo build --release --locked
+
+      - name: Install RepoDoctor as a project CodeArts Skill
+        shell: bash
+        run: |
+          set -euo pipefail
+          skill_dir=".codeartsdoer/skills/repodoctor"
+          mkdir -p "$skill_dir/bin"
+          cp skills/repodoctor/SKILL.md "$skill_dir/SKILL.md"
+          cp skills/repodoctor/README.md "$skill_dir/README.md"
+          install -m 755 target/release/repodoctor "$skill_dir/bin/repodoctor"
+          "$skill_dir/bin/repodoctor" validate-skill "$skill_dir"
+          "$skill_dir/bin/repodoctor" scan . --format json --output "${RUNNER_TEMP}/repodoctor-preflight.json"
+          python3 -m json.tool "${RUNNER_TEMP}/repodoctor-preflight.json" >/dev/null
+
+      - name: Install official CodeArts CLI (no credentials in environment yet)
+        shell: bash
+        run: |
+          set -euo pipefail
+          installer="${RUNNER_TEMP}/codearts-install.sh"
+          url="https://cnnorth4-cloudide-marketplace.obs.cn-north-4.myhuaweicloud.com/codearts/cli_tui/install_script/install.sh"
+          curl --fail --location --show-error --silent --retry 3 --max-time 90 "$url" --output "$installer"
+          test -s "$installer"
+          # The source is the vendor's official OBS bucket; never run a third-party mirror.
+          timeout 180 sh "$installer"
+          echo "$HOME/.codeartsdoer/installers" >> "$GITHUB_PATH"
+
+      - name: Check CodeArts CLI installation
+        shell: bash
+        run: |
+          set -euo pipefail
+          codearts --version
+          codearts run --help >/dev/null
+
+      - name: Verify CodeArts agent invocation / try contest submission
+        shell: bash
+        env:
+          CODEARTS_CLI_AK: ${{ secrets.AK }}
+          CODEARTS_CLI_SK: ${{ secrets.SK }}
+          PHASE: ${{ github.event.inputs.phase || 'smoke' }}
+        run: |
+          set -euo pipefail
+          mkdir -p "${RUNNER_TEMP}/codearts-summary"
+          python3 tools/codearts_ci.py --phase "$PHASE" --result "${RUNNER_TEMP}/codearts-summary/result.json" --timeout 360
+
+      - name: Upload sanitized status even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: codearts-cli-result-${{ github.run_id }}
+          path: ${{ runner.temp }}/codearts-summary/result.json
+          if-no-files-found: warn
+          retention-days: 14
