@@ -194,6 +194,17 @@ def diagnose_model_listing(result):
     }
 
 
+def available_builtin_models(table):
+    """Expose only built-in vendor IDs, never names from private custom providers."""
+    return sorted(set(
+        first
+        for line in ANSI.sub("", table).splitlines()
+        for first in line.split()[:1]
+        if first.startswith("huaweicloud-maas/")
+        and re.fullmatch(r"huaweicloud-maas/[A-Za-z0-9_.-]+", first)
+    ))[:30]
+
+
 def choose_and_run(prompt, cwd, primary=DEFAULT_PRIMARY, fallback=DEFAULT_FALLBACK, timeout=300):
     models = invoke(["codearts", "models"], cwd, 45)
     list_attempts = 1
@@ -219,6 +230,7 @@ def choose_and_run(prompt, cwd, primary=DEFAULT_PRIMARY, fallback=DEFAULT_FALLBA
             "status": "primary_model_not_listed",
             "model": None,
             "fallback_listed": bool(fallback_id),
+            "available_huawei_models": available_builtin_models(models.stdout),
             "text": "",
             "exit": 3,
         }
@@ -308,6 +320,8 @@ def main():
                 summary["error_kind"] = invoked.get("error_kind")
                 summary["model_list_diagnostic"] = invoked.get("model_list_diagnostic")
                 summary["model_list_attempts"] = invoked.get("model_list_attempts")
+                summary["available_huawei_models"] = invoked.get("available_huawei_models", [])
+                summary["fallback_listed"] = invoked.get("fallback_listed")
                 if output.is_file():
                     try:
                         report = json.loads(output.read_text(encoding="utf-8"))
