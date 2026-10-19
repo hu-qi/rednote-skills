@@ -47,8 +47,8 @@ fn execute(args: &[String]) -> Result<(), String> {
             "--format" => {
                 index += 1;
                 format = args.get(index).ok_or("missing format")?.as_str();
-                if format != "json" && format != "markdown" {
-                    return Err("format must be json or markdown".into());
+                if format != "json" && format != "markdown" && format != "sarif" {
+                    return Err("format must be json, markdown or sarif".into());
                 }
             }
             "--output" => {
@@ -61,7 +61,9 @@ fn execute(args: &[String]) -> Result<(), String> {
     }
     let root = Path::new(&args[2]);
     let report = rednote_skills::scan(root).map_err(|err| err.to_string())?;
-    let body = if format == "markdown" {
+    let body = if format == "sarif" {
+        rednote_skills::sarif::sarif_report(&report)
+    } else if format == "markdown" {
         rednote_skills::markdown_report(&report)
     } else {
         rednote_skills::json_report(root, &report)
