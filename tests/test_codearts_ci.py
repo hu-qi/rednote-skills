@@ -24,6 +24,16 @@ class CodeArtsCiUnitTests(unittest.TestCase):
                          "custom/Gemini-3.8-Flash-Medium")
         self.assertIsNone(ci.resolve_model(table, "unconfigured-model"))
 
+    def test_builtin_models_do_not_include_private_custom_provider_names(self):
+        table = ("model_id model_name\n"
+                 "huaweicloud-maas/GLM-5.2 GLM-5.2\n"
+                 "custom/internal-private-model ACME\n"
+                 "huaweicloud-maas/openpangu-2.0-flash OpenPangu\n")
+        self.assertEqual(
+            ci.available_builtin_models(table),
+            ["huaweicloud-maas/GLM-5.2", "huaweicloud-maas/openpangu-2.0-flash"],
+        )
+
     def test_only_quota_failure_activates_fallback(self):
         table = "model_id model_name\nhuaweicloud-maas/glm-5.3-flash GLM-5.3-Flash\ncustom/Gemini-3.8-Flash-Medium Gemini-3.8-Flash-Medium\n"
         outputs = [

@@ -117,10 +117,12 @@ jobs:
           CODEARTS_CLI_AK: ${{ secrets.AK }}
           CODEARTS_CLI_SK: ${{ secrets.SK }}
           PHASE: ${{ github.event.inputs.phase || 'smoke' }}
+          PRIMARY_MODEL: ${{ vars.CODEARTS_PRIMARY_MODEL || 'glm-5.3-flash' }}
+          FALLBACK_MODEL: ${{ vars.CODEARTS_FALLBACK_MODEL || 'Gemini-3.8-Flash-Medium' }}
         run: |
           set -euo pipefail
           mkdir -p "${RUNNER_TEMP}/codearts-summary"
-          python3 tools/codearts_ci.py --phase "$PHASE" --result "${RUNNER_TEMP}/codearts-summary/result.json" --timeout 360
+          python3 tools/codearts_ci.py --phase "$PHASE" --primary "$PRIMARY_MODEL" --fallback "$FALLBACK_MODEL" --result "${RUNNER_TEMP}/codearts-summary/result.json" --timeout 360
 
       - name: Upload sanitized status even on failure
         if: always()
