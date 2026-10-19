@@ -97,7 +97,7 @@ class CodeArtsCiUnitTests(unittest.TestCase):
 
     def test_http_service_failure_is_retried_but_not_auth_failure(self):
         listing = ("model_id model_name\n"
-                   "huaweicloud-maas/glm-5.3-flash GLM-5.3-Flash\n")
+                   "huaweicloud-maas/glm-5.3 GLM-5.3-Flash\n")
         outputs = [
             subprocess.CompletedProcess([], 1, "", "HTTP 503 Service Unavailable"),
             subprocess.CompletedProcess([], 0, listing, ""),
