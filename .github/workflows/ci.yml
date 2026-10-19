@@ -45,6 +45,12 @@ jobs:
           archive="dist/repodoctor-v0.2.0-$platform.zip"
           python tools/skill_dist.py package --binary "$binary" --platform "$platform" --output "$archive"
           python tools/skill_dist.py verify "$archive"
+      - name: Upload verified Skill package
+        uses: actions/upload-artifact@v4
+        with:
+          name: repodoctor-v0.2.0-${{ runner.os }}-${{ runner.arch }}
+          path: dist/*.zip
+          if-no-files-found: error
       - name: Validate skill using Rust CLI
         shell: bash
         run: target/release/repodoctor${{ runner.os == 'Windows' && '.exe' || '' }} validate-skill skills/repodoctor
