@@ -122,6 +122,39 @@ def diagnose_model_listing(result):
         "http_5xx": ("500", "502", "503", "504", "internal server error"),
         "http_4xx": ("400", "401", "403", "404", "429"),
     }
+    # Localized CLI errors can be almost entirely Chinese, so English-only
+    # classifiers may report "unknown". Capture only allowlisted phrases.
+    cn_patterns = {
+        "identity": ("鉴权", "认证", "身份验证", "访问密钥", "密钥无效", "签名错误"),
+        "no_entitlement": ("席位", "套餐", "订阅", "未开通", "尚未获得", "购买", "未授权"),
+        "account_permissions": ("权限", "账号", "账户", "成员", "主账号", "子账号"),
+        "network": ("网络", "代理", "连接", "超时", "解析域名", "证书"),
+        "upstream": ("网关", "服务器", "服务异常", "服务不可用", "服务端"),
+        "configuration": ("配置", "环境变量", "初始化", "找不到", "未设置", "参数"),
+        "model_registry": ("模型", "列表", "供应商", "加载"),
+        "interaction_required": ("交互", "终端", "信任此文件夹", "确认"),
+        "generic_failure": ("错误", "异常", "失败", "无法", "请求"),
+    }
+    zh_signals = sorted(
+        label for label, patterns in cn_patterns.items()
+        if any(pattern in content for pattern in patterns)
+    )
+    line_kinds = []
+    for line in ANSI.sub("", content).splitlines()[:15]:
+        stripped = line.lstrip()
+        if not stripped:
+            continue
+        if stripped.startswith(("at ", "    at ")) or "stack trace" in stripped.casefold():
+            kind = "stack_frame"
+        elif stripped.startswith(("{", "[")):
+            kind = "structured"
+        elif stripped.casefold().startswith(("error", "fatal", "warn")):
+            kind = "diagnostic"
+        elif "http://" in stripped or "https://" in stripped:
+            kind = "url_present"
+        else:
+            kind = "text"
+        line_kinds.append(kind)
     # Lengths, flags, exit code and a short fingerprint cannot reveal AK/SK.
     allowed_error_tokens = {
         "failed", "error", "request", "response", "server", "service", "gateway",
@@ -144,6 +177,9 @@ def diagnose_model_listing(result):
         "exit_code": result.returncode,
         "http_status_codes": status_codes,
         "safe_error_keywords": safe_keywords[:20],
+        "localized_error_categories": zh_signals,
+        "line_kinds": line_kinds,
+        "contains_chinese": bool(re.search(r"[\u4e00-\u9fff]", content)),
         "stdout_chars": len(result.stdout or ""),
         "stderr_chars": len(result.stderr or ""),
         "output_fingerprint_12": hashlib.sha256(content.encode("utf-8")).hexdigest()[:12],
