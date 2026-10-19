@@ -1,23 +1,18 @@
 # Rednote Skills
 
-Rust-first, portable AI Skills for Huawei CodeArts and compatible agent environments.
+Rust-first, independently distributable agent Skills. The competition priority is **RepoDoctor**. VibeCoding Pet and Rednote Creator Lab remain separately planned.
 
-## Current priority: RepoDoctor
-
-**RepoDoctor** is a read-only, evidence-first repository inspection Skill. Its Rust scanner detects selected CI permission risks and static code patterns, reports file/line locations, and never executes untrusted repository code. Rule matches are **review leads**, not confirmed vulnerabilities.
+## RepoDoctor v0.2 (development)
 
 ```bash
-cargo test
-cargo run --bin repodoctor -- scan /path/to/repo --markdown
-python3 tools/skill_dist.py validate
+cargo run --bin repodoctor -- validate-skill skills/repodoctor
+cargo run --bin repodoctor -- scan . --format json
+cargo run --bin repodoctor -- scan . --format markdown
+cargo test --all-targets
 ```
 
-See [RepoDoctor Skill](skills/repodoctor/SKILL.md), [distribution and verification](docs/DISTRIBUTION.md), and [roadmap](docs/TODO.md).
+[Skill instructions](skills/repodoctor/SKILL.md) · [Release process](docs/RELEASE.md) · [Competition checklist](docs/COMPETITION.md) · [Roadmap](docs/TODO.md)
 
-## Multi-Skill roadmap
+Results are **static leads**, not confirmed vulnerabilities. The scanner does not execute target code, upload files or modify the scanned repository. Read-only by default; explicitly authorize any future patching or network integration.
 
-- RepoDoctor: actively developed for the Huawei × Xiaohongshu Skill competition.
-- VibeCoding Pet: planned, no runtime implementation yet.
-- Rednote Creator Lab: planned, no runtime implementation yet.
-
-The release workflow bundles independent platform binaries with the Skill, a manifest and per-file SHA-256 hashes. CodeArts platform import remains unverified and must be tested before competition submission.
+CodeArts compatibility, benchmark accuracy and a published tagged Release still require verification.

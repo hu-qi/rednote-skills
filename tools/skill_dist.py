@@ -10,7 +10,7 @@ import sys
 import zipfile
 
 SLUG = "repodoctor"
-VERSION = "0.1.0"
+VERSION = "0.2.0"
 MAX_FILES = 30
 MAX_BYTES = 40 * 1024 * 1024
 BINARY_LIMIT = 30 * 1024 * 1024

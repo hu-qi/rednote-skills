@@ -7,8 +7,8 @@ RepoDoctor uses a Rust CLI bundled with its portable `SKILL.md`. Build and integ
 ```bash
 cargo build --release
 python3 tools/skill_dist.py validate
-python3 tools/skill_dist.py package --binary target/release/repodoctor --platform macos-aarch64 --output dist/repodoctor-v0.1.0-macos-aarch64.zip
-python3 tools/skill_dist.py verify dist/repodoctor-v0.1.0-macos-aarch64.zip
+python3 tools/skill_dist.py package --binary target/release/repodoctor --platform macos-aarch64 --output dist/repodoctor-v0.2.0-macos-aarch64.zip
+python3 tools/skill_dist.py verify dist/repodoctor-v0.2.0-macos-aarch64.zip
 ```
 
 Each zip includes a native executable, `SKILL.md`, `README.md`, and `manifest.json` with hashes. The archive limit is 30 entries and 40 MiB uncompressed. Manifest integrity is not a signature: always obtain artifacts and SHA256SUMS from the trusted project release.
@@ -18,9 +18,9 @@ Each zip includes a native executable, `SKILL.md`, `README.md`, and `manifest.js
 Only install archives from a source you trust. Verify their published SHA256SUMS first.
 
 ```bash
-python3 tools/install_skill.py install dist/repodoctor-v0.1.0-macos-aarch64.zip --destination "$HOME/.agents/skills/repodoctor"
+python3 tools/install_skill.py install dist/repodoctor-v0.2.0-macos-aarch64.zip --destination "$HOME/.agents/skills/repodoctor"
 # For an opt-in upgrade:
-python3 tools/install_skill.py install dist/repodoctor-v0.1.0-macos-aarch64.zip --destination "$HOME/.agents/skills/repodoctor" --replace
+python3 tools/install_skill.py install dist/repodoctor-v0.2.0-macos-aarch64.zip --destination "$HOME/.agents/skills/repodoctor" --replace
 # Restore the backup:
 python3 tools/install_skill.py rollback --destination "$HOME/.agents/skills/repodoctor"
 ```
