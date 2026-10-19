@@ -5,6 +5,7 @@ Never prints or uploads model transcripts, repository secrets, or credentials.
 Submission receipts require human verification in both marketplaces.
 """
 import argparse
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -100,11 +101,45 @@ def classify_cli_error(body):
     return "unknown"
 
 
+def diagnose_model_listing(result):
+    """Return non-sensitive telemetry only; never copy CLI output to CI artifacts."""
+    content = (result.stdout or "") + "\n" + (result.stderr or "")
+    low = content.casefold()
+    signals = {
+        "credential_or_signature": ("ak/sk", "access key", "secret key", "signature", "credential"),
+        "account_activation_or_seat": ("seat", "subscription", "activate", "not enabled", "席位", "开通", "订阅"),
+        "region_or_endpoint": ("region", "endpoint", "cn-north", "区域"),
+        "proxy_or_tls": ("ssl", "tls", "certificate", "proxy", "证书"),
+        "model_registry": ("model", "provider", "模型", "供应商"),
+        "login_required": ("login", "not logged in", "登录"),
+        "noninteractive_or_tty": ("tty", "stdin", "interactive", "terminal", "非交互"),
+        "cli_exception": ("typeerror", "exception", "stack trace", "cannot read properties", "panic"),
+        "http_5xx": ("500", "502", "503", "504", "internal server error"),
+        "http_4xx": ("400", "401", "403", "404", "429"),
+    }
+    # Lengths, flags, exit code and a short fingerprint cannot reveal AK/SK.
+    return {
+        "exit_code": result.returncode,
+        "stdout_chars": len(result.stdout or ""),
+        "stderr_chars": len(result.stderr or ""),
+        "output_fingerprint_12": hashlib.sha256(content.encode("utf-8")).hexdigest()[:12],
+        "output_shape": (
+            "html" if "<html" in low or "<!doctype html" in low else
+            "json" if content.lstrip().startswith(("{", "[")) else
+            "models_table" if "model_id" in low and "model_name" in low else
+            "plain_text" if content.strip() else "empty"
+        ),
+        "safe_signals": sorted(key for key, patterns in signals.items()
+                               if any(pattern in low for pattern in patterns)),
+    }
+
+
 def choose_and_run(prompt, cwd, primary=DEFAULT_PRIMARY, fallback=DEFAULT_FALLBACK, timeout=300):
     models = invoke(["codearts", "models"], cwd, 45)
     if models.returncode:
         return {"status": "models_failed", "model": None, "text": "",
                 "error_kind": classify_cli_error(models.stdout + "\n" + models.stderr),
+                "model_list_diagnostic": diagnose_model_listing(models),
                 "exit": models.returncode}
     primary_id = resolve_model(models.stdout, primary)
     fallback_id = resolve_model(models.stdout, fallback)
@@ -200,6 +235,7 @@ def main():
                 summary["status"] = invoked["status"]
                 summary["attempted_models"] = invoked.get("attempted", [])
                 summary["error_kind"] = invoked.get("error_kind")
+                summary["model_list_diagnostic"] = invoked.get("model_list_diagnostic")
                 if output.is_file():
                     try:
                         report = json.loads(output.read_text(encoding="utf-8"))
