@@ -1,14 +1,18 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
+
+static FIXTURE_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
 fn fixture() -> PathBuf {
     let nonce = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_nanos();
-    let root = std::env::temp_dir().join(format!("repodoctor-acceptance-{}-{nonce}", std::process::id()));
+    let sequence = FIXTURE_SEQUENCE.fetch_add(1, Ordering::Relaxed);
+    let root = std::env::temp_dir().join(format!("repodoctor-acceptance-{}-{nonce}-{sequence}", std::process::id()));
     fs::create_dir_all(root.join(".github/workflows")).unwrap();
     root
 }
@@ -24,6 +28,15 @@ fn run(root: &Path, format: &str) -> String {
         String::from_utf8_lossy(&result.stderr)
     );
     String::from_utf8(result.stdout).unwrap()
+}
+
+#[test]
+fn concurrent_fixture_paths_do_not_collide() {
+    let a = fixture();
+    let b = fixture();
+    assert_ne!(a, b);
+    fs::remove_dir_all(a).unwrap();
+    fs::remove_dir_all(b).unwrap();
 }
 
 #[test]
