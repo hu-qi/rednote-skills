@@ -1,0 +1,28 @@
+name: rust-ci
+on:
+  push:
+    branches: [main, "feat/**"]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Formatting
+        run: cargo fmt --all
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
+      - name: Tests
+        run: cargo test --all-targets
+      - name: Build release
+        run: cargo build --release
+      - name: RepoDoctor smoke
+        run: |
+          target/release/repodoctor scan . > /tmp/repodoctor.json
+          python3 -m json.tool /tmp/repodoctor.json > /dev/null
