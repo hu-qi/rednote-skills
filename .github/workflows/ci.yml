@@ -15,25 +15,28 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
       - name: Formatting
         run: cargo fmt --all
       - name: Clippy
-        run: cargo clippy --all-targets -- -D warnings
+        run: cargo clippy --all-targets --locked -- -D warnings
       - name: Tests
-        run: cargo test --all-targets
+        run: cargo test --all-targets --locked
       - name: Python Skill distribution tests
-        run: python3 -m unittest discover -s tests -p 'test_*.py' -v
+        run: python -m unittest discover -s tests -p 'test_*.py' -v
       - name: Validate Skill frontmatter
-        run: python3 tools/skill_dist.py validate
+        run: python tools/skill_dist.py validate
       - name: Build release
-        run: cargo build --release
+        run: cargo build --release --locked
       - name: Package and verify Linux distribution
         run: |
-          python3 tools/skill_dist.py package --binary target/release/repodoctor --platform linux-x86_64 --output dist/repodoctor-v0.1.0-linux-x86_64.zip
-          python3 tools/skill_dist.py verify dist/repodoctor-v0.1.0-linux-x86_64.zip
+          python tools/skill_dist.py package --binary target/release/repodoctor --platform linux-x86_64 --output dist/repodoctor-v0.2.0-linux-x86_64.zip
+          python tools/skill_dist.py verify dist/repodoctor-v0.2.0-linux-x86_64.zip
       - name: Validate skill using Rust CLI
         shell: bash
         run: target/release/repodoctor${{ runner.os == 'Windows' && '.exe' || '' }} validate-skill skills/repodoctor
@@ -41,4 +44,4 @@ jobs:
         shell: bash
         run: |
           target/release/repodoctor${{ runner.os == 'Windows' && '.exe' || '' }} scan . > report.json
-          python3 -m json.tool report.json > /dev/null
+          python -m json.tool report.json > /dev/null
