@@ -1,0 +1,62 @@
+name: repodoctor-distribution
+on:
+  push:
+    tags:
+      - 'repodoctor/v*'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux-x86_64
+            binary: target/release/repodoctor
+          - os: macos-15-intel
+            platform: macos-x86_64
+            binary: target/release/repodoctor
+          - os: macos-latest
+            platform: macos-aarch64
+            binary: target/release/repodoctor
+          - os: windows-latest
+            platform: windows-x86_64
+            binary: target/release/repodoctor.exe
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build
+        run: cargo build --release --locked
+      - name: Unit tests
+        run: cargo test --locked
+      - name: Package Skill
+        shell: bash
+        run: |
+          python3 tools/skill_dist.py package --binary "${{ matrix.binary }}" --platform "${{ matrix.platform }}" --output "dist/repodoctor-v0.1.0-${{ matrix.platform }}.zip"
+          python3 tools/skill_dist.py verify "dist/repodoctor-v0.1.0-${{ matrix.platform }}.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: repodoctor-${{ matrix.platform }}
+          path: dist/*.zip
+          if-no-files-found: error
+  publish:
+    if: startsWith(github.ref, 'refs/tags/repodoctor/v')
+    needs: package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: repodoctor-*
+          merge-multiple: true
+          path: dist
+      - name: Generate SHA-256 checksums
+        run: cd dist && sha256sum *.zip > SHA256SUMS
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true

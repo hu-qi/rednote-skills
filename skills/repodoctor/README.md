@@ -1,9 +1,17 @@
-# RepoDoctor Skill
+# RepoDoctor Skill v0.1.0
 
-Rust-first evidence-driven repository preflight (v0.1).
+Runs locally, without network connectivity or LLM credentials.
 
-Run: `cargo run --bin repodoctor -- scan . --markdown`
+Example from the source checkout:
 
-Rules: RD001 (write-all), RD002 (pull_request_target), RD003 (Python shell=True), RD004 (JS eval), RD005 (private-key PEM delimiter).
+```bash
+cargo run --release --bin repodoctor -- scan . --markdown
+```
 
-Limitations: heuristic-only; never runs target code or makes modifications. Rust source-level rules are future work.
+From a release zip, replace the command with `bin/repodoctor scan /path/to/repo --markdown` or `bin/repodoctor.exe` on Windows.
+
+The scan reads the repository without executing it and emits static review leads. It is not a vulnerability certification, and no auto-fix engine is included yet.
+
+## Install and verify
+
+See [distribution documentation](../../docs/DISTRIBUTION.md). Each platform archive contains its own SKILL.md and executable.
