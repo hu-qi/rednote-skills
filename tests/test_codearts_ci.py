@@ -92,6 +92,16 @@ class CodeArtsCiUnitTests(unittest.TestCase):
         self.assertNotIn("VERY_PRIVATE", repr(detail))
         self.assertEqual(ci.classify_cli_error(failure.stderr), "service_or_gateway")
 
+    def test_chinese_error_is_classified_without_exposing_original_text(self):
+        message = "Error: 请求失败。当前账号没有使用权限，请联系管理员。trace_id=SECRET_TRACE"
+        result = subprocess.CompletedProcess([], 1, "", message)
+        details = ci.diagnose_model_listing(result)
+        self.assertTrue(details["contains_chinese"])
+        self.assertIn("account_permissions", details["localized_error_categories"])
+        self.assertIn("generic_failure", details["localized_error_categories"])
+        self.assertNotIn("SECRET_TRACE", repr(details))
+        self.assertIn("diagnostic", details["line_kinds"])
+
     def test_urls_are_deidentified_and_not_treated_as_publication_proof(self):
         candidates = ci.allowed_receipts(
             "https://example.com/private?token=SECRET "
