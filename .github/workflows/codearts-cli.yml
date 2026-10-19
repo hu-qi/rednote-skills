@@ -63,6 +63,39 @@ jobs:
           timeout 180 sh "$installer"
           echo "$HOME/.codeartsdoer/installers" >> "$GITHUB_PATH"
 
+      - name: Trust disposable CI workspace for non-interactive CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          import tempfile
+
+          folder = Path.home() / ".codeartsdoer" / "cli-data"
+          folder.mkdir(parents=True, exist_ok=True)
+          settings = folder / "settings.json"
+          config = {}
+          if settings.is_file():
+              config = json.loads(settings.read_text(encoding="utf-8"))
+              if not isinstance(config, dict):
+                  raise ValueError("CodeArts settings.json must be an object")
+          # Vendor FAQ: enabled=false disables folder-trust restricted mode.
+          # This only affects the disposable, main-branch GitHub runner.
+          config["enabled"] = False
+          fd, temporary = tempfile.mkstemp(prefix=".ci-settings-", dir=folder)
+          try:
+              with os.fdopen(fd, "w", encoding="utf-8") as stream:
+                  json.dump(config, stream)
+              os.chmod(temporary, 0o600)
+              os.replace(temporary, settings)
+          finally:
+              if os.path.exists(temporary):
+                  os.unlink(temporary)
+          print("Configured disposable runner workspace trust; agent sandbox remains enabled.")
+          PY
+
       - name: Check CodeArts CLI installation
         shell: bash
         run: |
@@ -76,7 +109,6 @@ jobs:
           CODEARTS_CLI_AK: ${{ secrets.AK }}
           CODEARTS_CLI_SK: ${{ secrets.SK }}
           PHASE: ${{ github.event.inputs.phase || 'smoke' }}
-          CODEARTS_CI_ENCRYPT_DIAGNOSTIC: "1"
         run: |
           set -euo pipefail
           mkdir -p "${RUNNER_TEMP}/codearts-summary"
@@ -87,6 +119,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: codearts-cli-result-${{ github.run_id }}
-          path: ${{ runner.temp }}/codearts-summary/
+          path: ${{ runner.temp }}/codearts-summary/result.json
           if-no-files-found: warn
           retention-days: 14
