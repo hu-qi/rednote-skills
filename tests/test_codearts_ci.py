@@ -50,6 +50,25 @@ class CodeArtsCiUnitTests(unittest.TestCase):
         self.assertEqual(result["status"], "cli_failed")
         self.assertEqual(mocked.call_count, 2)
 
+    def test_model_failure_diagnostic_never_echoes_credentials(self):
+        raw = "Access Key SECRET_AK could not authorize model registry: 403; url https://example.com?token=SECRET_SK"
+        failure = subprocess.CompletedProcess([], 1, "", raw)
+        detail = ci.diagnose_model_listing(failure)
+        serialized = str(detail)
+        self.assertEqual(detail["exit_code"], 1)
+        self.assertIn("credential_or_signature", detail["safe_signals"])
+        self.assertIn("http_4xx", detail["safe_signals"])
+        self.assertNotIn("SECRET_AK", serialized)
+        self.assertNotIn("SECRET_SK", serialized)
+        self.assertNotIn("https://", serialized)
+
+    def test_model_failure_tracks_output_shape(self):
+        result = subprocess.CompletedProcess([], 2, "<html>gateway unavailable</html>", "")
+        detail = ci.diagnose_model_listing(result)
+        self.assertEqual(detail["output_shape"], "html")
+        self.assertEqual(detail["exit_code"], 2)
+        self.assertEqual(detail["stdout_chars"], len(result.stdout))
+
     def test_urls_are_deidentified_and_not_treated_as_publication_proof(self):
         candidates = ci.allowed_receipts(
             "https://example.com/private?token=SECRET "
