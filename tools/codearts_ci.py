@@ -324,8 +324,10 @@ def submission_prompt(root):
     # Explicitly from the official Huawei contest submission page.
     return (
         "我正在参加2026华为开发者大赛的小红书Skill创新赛，作品名称 RepoDoctor。"
-        "请先将当前目录 skills/repodoctor/SKILL.md 和可复用的 Rust 诊断能力"
-        "发布到华为云Skill市场，再使用 redskillhub-upload 发布到小红书Skill市场。"
+        "请先检查并使用当前项目 .codeartsdoer/skills/repodoctor/ 完整 Skill 目录，"
+        "确认其中包含 SKILL.md、README.md 和可执行的 bin/repodoctor，"
+        "不得只发布单独的 SKILL.md 或缺少二进制的源码目录。"
+        "先发布到华为云Skill市场，再使用 redskillhub-upload 发布到小红书Skill市场。"
         "赛题方向：通用赛道/开发工具。作品简介：证据驱动的开源项目风险诊断Skill，"
         "默认只读、离线扫描，输出文件和行号、证据分级与可复用的 JSON/Markdown/SARIF 报告。"
         "开源地址：https://github.com/hu-qi/rednote-skills/tree/main/skills/repodoctor 。"
