@@ -80,10 +80,32 @@ def invoke(command, cwd, timeout):
         return subprocess.CompletedProcess(command, 124, "", "CLI_TIMEOUT")
 
 
+def classify_cli_error(body):
+    """Whitelist only error categories; do not expose raw CLI output."""
+    lower = body.casefold()
+    if is_quota_failure(body):
+        return "quota_or_throttling"
+    if any(value in lower for value in ("401", "unauthorized", "invalid credential", "invalid ak",
+                                        "authentication failed", "鉴权失败", "认证失败", "ak/sk")):
+        return "authentication"
+    if any(value in lower for value in ("403", "forbidden", "accessdenied", "permission denied",
+                                        "not authorized", "无权限", "权限不足")):
+        return "authorization"
+    if any(value in lower for value in ("timeout", "timed out", "dns", "econnreset", "econnrefused",
+                                        "network error", "connection refused", "连接失败")):
+        return "network"
+    if any(value in lower for value in ("not found", "unknown command", "unsupported",
+                                        "unknown option", "not a command")):
+        return "cli_incompatible"
+    return "unknown"
+
+
 def choose_and_run(prompt, cwd, primary=DEFAULT_PRIMARY, fallback=DEFAULT_FALLBACK, timeout=300):
     models = invoke(["codearts", "models"], cwd, 45)
     if models.returncode:
-        return {"status": "models_failed", "model": None, "text": "", "exit": models.returncode}
+        return {"status": "models_failed", "model": None, "text": "",
+                "error_kind": classify_cli_error(models.stdout + "\\n" + models.stderr),
+                "exit": models.returncode}
     primary_id = resolve_model(models.stdout, primary)
     fallback_id = resolve_model(models.stdout, fallback)
     if not primary_id:
@@ -176,7 +198,7 @@ def main():
                 invoked = choose_and_run(prompt, root, args.primary, args.fallback, args.timeout)
                 summary["model"] = invoked.get("model")
                 summary["status"] = invoked["status"]
-                summary["attempted_models"] = invoked.get("attempted", [])
+                summary["attempted_models"] = invoked.get("attempted", [])\n                summary["error_kind"] = invoked.get("error_kind")
                 if output.is_file():
                     try:
                         report = json.loads(output.read_text(encoding="utf-8"))
