@@ -33,10 +33,18 @@ jobs:
         run: python tools/skill_dist.py validate
       - name: Build release
         run: cargo build --release --locked
-      - name: Package and verify Linux distribution
+      - name: Package and verify native Skill distribution
+        shell: bash
         run: |
-          python tools/skill_dist.py package --binary target/release/repodoctor --platform linux-x86_64 --output dist/repodoctor-v0.2.0-linux-x86_64.zip
-          python tools/skill_dist.py verify dist/repodoctor-v0.2.0-linux-x86_64.zip
+          case "$RUNNER_OS" in
+            Windows) platform=windows-x86_64; binary=target/release/repodoctor.exe ;;
+            macOS)   platform=macos-$(uname -m); binary=target/release/repodoctor ;;
+            Linux)   platform=linux-x86_64; binary=target/release/repodoctor ;;
+            *) exit 2 ;;
+          esac
+          archive="dist/repodoctor-v0.2.0-$platform.zip"
+          python tools/skill_dist.py package --binary "$binary" --platform "$platform" --output "$archive"
+          python tools/skill_dist.py verify "$archive"
       - name: Validate skill using Rust CLI
         shell: bash
         run: target/release/repodoctor${{ runner.os == 'Windows' && '.exe' || '' }} validate-skill skills/repodoctor
