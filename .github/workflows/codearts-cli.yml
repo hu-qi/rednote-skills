@@ -81,9 +81,17 @@ jobs:
               config = json.loads(settings.read_text(encoding="utf-8"))
               if not isinstance(config, dict):
                   raise ValueError("CodeArts settings.json must be an object")
-          # Vendor FAQ: enabled=false disables folder-trust restricted mode.
-          # This only affects the disposable, main-branch GitHub runner.
-          config["enabled"] = False
+          # Vendor FAQ's screenshot requires security.folderTrust.enabled=false.
+          # Trust applies only to this disposable, reviewed-main GitHub runner.
+          security = config.setdefault("security", {})
+          if not isinstance(security, dict):
+              raise ValueError("CodeArts security settings must be an object")
+          trust = security.setdefault("folderTrust", {})
+          if not isinstance(trust, dict):
+              raise ValueError("CodeArts folderTrust settings must be an object")
+          trust["enabled"] = False
+          # A top-level "enabled" has no documented folder-trust meaning.
+          config.pop("enabled", None)
           fd, temporary = tempfile.mkstemp(prefix=".ci-settings-", dir=folder)
           try:
               with os.fdopen(fd, "w", encoding="utf-8") as stream:
