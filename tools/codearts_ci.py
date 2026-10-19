@@ -104,7 +104,7 @@ def choose_and_run(prompt, cwd, primary=DEFAULT_PRIMARY, fallback=DEFAULT_FALLBA
     models = invoke(["codearts", "models"], cwd, 45)
     if models.returncode:
         return {"status": "models_failed", "model": None, "text": "",
-                "error_kind": classify_cli_error(models.stdout + "\\n" + models.stderr),
+                "error_kind": classify_cli_error(models.stdout + "\n" + models.stderr),
                 "exit": models.returncode}
     primary_id = resolve_model(models.stdout, primary)
     fallback_id = resolve_model(models.stdout, fallback)
@@ -198,7 +198,8 @@ def main():
                 invoked = choose_and_run(prompt, root, args.primary, args.fallback, args.timeout)
                 summary["model"] = invoked.get("model")
                 summary["status"] = invoked["status"]
-                summary["attempted_models"] = invoked.get("attempted", [])\n                summary["error_kind"] = invoked.get("error_kind")
+                summary["attempted_models"] = invoked.get("attempted", [])
+                summary["error_kind"] = invoked.get("error_kind")
                 if output.is_file():
                     try:
                         report = json.loads(output.read_text(encoding="utf-8"))
