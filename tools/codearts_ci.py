@@ -137,7 +137,7 @@ def diagnose_model_listing(result):
     )
     # Require HTTP context to avoid mistaking random numeric IDs for HTTP codes.
     status_codes = sorted(set(re.findall(
-        r"(?:http(?:\\/\\d(?:\\.\\d)?)?\\s*|status(?:\\s+code)?\\s*[:=]?\\s*)([45]\\d\\d)\\b",
+        r"(?:http(?:/\d(?:\.\d)?)?\s*|status(?:\s+code)?\s*[:=]?\s*)([45]\d\d)\b",
         low,
     )))
     return {
