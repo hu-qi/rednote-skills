@@ -1,17 +1,16 @@
-# RepoDoctor Skill v0.1.0
+# RepoDoctor v0.2
 
-Runs locally, without network connectivity or LLM credentials.
+Rust-only, dependency-free offline repository risk triage. Designed to be packaged as a portable Agent Skill, with no API key required.
 
-Example from the source checkout:
+Run from this repository:
 
 ```bash
-cargo run --release --bin repodoctor -- scan . --markdown
+cargo run --bin repodoctor -- validate-skill skills/repodoctor
+cargo run --bin repodoctor -- scan . --format json
+cargo run --bin repodoctor -- scan . --format markdown
+cargo test --all-targets
 ```
 
-From a release zip, replace the command with `bin/repodoctor scan /path/to/repo --markdown` or `bin/repodoctor.exe` on Windows.
+Tagged GitHub Releases package SKILL.md together with native Linux/macOS/Windows executables and SHA256SUMS. Install the platform archive and point your Skill runtime to the extracted repodoctor folder. Official Huawei CodeArts compatibility has not yet been tested.
 
-The scan reads the repository without executing it and emits static review leads. It is not a vulnerability certification, and no auto-fix engine is included yet.
-
-## Install and verify
-
-See [distribution documentation](../../docs/DISTRIBUTION.md). Each platform archive contains its own SKILL.md and executable.
+Current rules are limited static *leads*, not reproduced vulnerabilities. RepoDoctor does not clone GitHub URLs, call LLMs, run target code, apply patches, or create PRs. Scans at most 10,000 eligible UTF-8 files up to 1 MiB each; symlinks are skipped.

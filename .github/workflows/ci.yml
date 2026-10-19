@@ -8,7 +8,11 @@ permissions:
   contents: read
 jobs:
   validate:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-15, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -30,7 +34,11 @@ jobs:
         run: |
           python3 tools/skill_dist.py package --binary target/release/repodoctor --platform linux-x86_64 --output dist/repodoctor-v0.1.0-linux-x86_64.zip
           python3 tools/skill_dist.py verify dist/repodoctor-v0.1.0-linux-x86_64.zip
+      - name: Validate skill using Rust CLI
+        shell: bash
+        run: target/release/repodoctor${{ runner.os == 'Windows' && '.exe' || '' }} validate-skill skills/repodoctor
       - name: RepoDoctor smoke
+        shell: bash
         run: |
-          target/release/repodoctor scan . > /tmp/repodoctor.json
-          python3 -m json.tool /tmp/repodoctor.json > /dev/null
+          target/release/repodoctor${{ runner.os == 'Windows' && '.exe' || '' }} scan . > report.json
+          python3 -m json.tool report.json > /dev/null

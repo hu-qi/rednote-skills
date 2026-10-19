@@ -10,7 +10,7 @@ pub struct Finding {
     pub evidence: &'static str,
 }
 #[derive(Debug, Default)]
-pub struct Report { pub scanned: usize, pub skipped: usize, pub findings: Vec<Finding> }
+pub struct Report { pub scanned: usize, pub skipped: usize, pub truncated: bool, pub findings: Vec<Finding> }
 
 fn ignored(name: &str) -> bool {
     matches!(name, ".git" | "node_modules" | "target" | "dist" | "build" | "vendor" | ".venv" | "__pycache__" | ".next")
@@ -24,16 +24,16 @@ fn walk(root: &Path, current: &Path, report: &mut Report) -> std::io::Result<()>
     for entry in entries {
         let p = entry.path();
         let typ = entry.file_type()?;
-        if typ.is_symlink() { report.skipped += 1; continue; }
+        if typ.is_symlink() { report.skipped += 1; report.truncated = true; continue; }
         if typ.is_dir() {
             if !ignored(&entry.file_name().to_string_lossy()) { walk(root, &p, report)?; }
             continue;
         }
         if !typ.is_file() || !eligible(&p) { continue; }
         if report.scanned >= 10_000 || entry.metadata()?.len() > 1_048_576 {
-            report.skipped += 1; continue;
+            report.skipped += 1; report.truncated = true; continue;
         }
-        let Ok(content) = fs::read_to_string(&p) else { report.skipped += 1; continue; };
+        let Ok(content) = fs::read_to_string(&p) else { report.skipped += 1; report.truncated = true; continue; };
         report.scanned += 1;
         let rel = p.strip_prefix(root).unwrap_or(&p).to_string_lossy().replace('\\', "/");
         let workflow = rel.starts_with(".github/workflows/") && (rel.ends_with(".yml") || rel.ends_with(".yaml"));
@@ -50,14 +50,14 @@ fn walk(root: &Path, current: &Path, report: &mut Report) -> std::io::Result<()>
             if workflow && (trimmed.starts_with("pull_request_target:") || trimmed == "- pull_request_target") {
                 add("RD002", "medium", "Fork trust boundary requires manual review");
             }
-            if !commented && rel.ends_with(".py") && content.contains("subprocess") && trimmed.contains("shell=True") {
+            if !commented && rel.ends_with(".py") && ["subprocess.run(", "subprocess.call(", "subprocess.Popen(", "subprocess.check_output(", "subprocess.check_call("].iter().any(|name| trimmed.contains(name)) && trimmed.replace(" ", "").contains("shell=True") {
                 add("RD003", "medium", "Shell execution requires taint analysis");
             }
             if !commented && [".js", ".jsx", ".ts", ".tsx"].iter().any(|e| rel.ends_with(e))
                 && trimmed.contains("eval(") {
                 add("RD004", "medium", "Dynamic evaluation requires input review");
             }
-            if trimmed.starts_with("-----BEGIN ") && trimmed.ends_with("PRIVATE KEY-----") {
+            if trimmed.starts_with("-----BEGIN ") && trimmed.ends_with(" PRIVATE KEY-----") && trimmed.len() <= 100 {
                 add("RD005", "critical", "Private key delimiter detected; contents withheld");
             }
         }
@@ -84,16 +84,16 @@ fn escape_json(input: &str) -> String {
 }
 pub fn json_report(root: &Path, report: &Report) -> String {
     let items: Vec<String> = report.findings.iter().map(|f| format!(
-        "{{\"rule_id\":\"{}\",\"severity\":\"{}\",\"path\":\"{}\",\"line\":{},\"evidence_level\":\"static-evidence\",\"evidence\":\"{}\"}}",
+        "{{\"rule_id\":\"{}\",\"severity\":\"{}\",\"path\":\"{}\",\"line\":{},\"evidence_level\":\"static-lead\",\"evidence\":\"{}\"}}",
         f.rule, f.severity, escape_json(&f.path), f.line, f.evidence)).collect();
-    format!("{{\"schema_version\":\"0.1.0\",\"repository\":\"{}\",\"scan\":{{\"mode\":\"read-only-static\",\"files_scanned\":{},\"files_skipped\":{}}},\"summary\":{{\"total_findings\":{}}},\"findings\":[{}],\"limitations\":[\"Heuristic matches are not proven vulnerabilities\",\"No code execution or automatic repairs\",\"Zero findings does not imply safety\"]}}",
-        escape_json(&root.display().to_string()), report.scanned, report.skipped,
+    format!("{{\"schema_version\":\"0.2.0\",\"repository\":\"{}\",\"scan\":{{\"mode\":\"read-only-static\",\"files_scanned\":{},\"files_skipped\":{},\"truncated\":{}}},\"summary\":{{\"total_findings\":{}}},\"findings\":[{}],\"limitations\":[\"Heuristic matches are not proven vulnerabilities\",\"No code execution or automatic repairs\",\"Zero findings does not imply safety\"]}}",
+        escape_json(&root.display().to_string()), report.scanned, report.skipped, report.truncated,
         report.findings.len(), items.join(","))
 }
 pub fn markdown_report(report: &Report) -> String {
-    let mut out = format!("# RepoDoctor scan\n\nScanned: {} | Skipped: {} | Leads: {}\n\n", report.scanned, report.skipped, report.findings.len());
+    let mut out = format!("# RepoDoctor scan\n\nScanned: {} | Skipped: {} | Truncated: {} | Leads: {}\n\n", report.scanned, report.skipped, report.truncated, report.findings.len());
     for f in &report.findings {
-        out.push_str(&format!("- **{}** ({}) at `{}:{}`: {} [static-evidence]\n",
+        out.push_str(&format!("- **{}** ({}) at `{}:{}`: {} [static-lead]\n",
             f.rule, f.severity, f.path, f.line, f.evidence));
     }
     out.push_str("\nThese are static review leads, not reproduced vulnerabilities. No repository code was executed.\n");
@@ -108,6 +108,12 @@ mod tests {
     fn classify_extensions() {
         assert!(eligible(Path::new("x.py")));
         assert!(!eligible(Path::new("x.exe")));
+    }
+    #[test]
+    fn shell_rule_is_scoped() {
+        let source = "subprocess.run(user, shell=True)";
+        assert!(source.contains("subprocess.run("));
+        assert!(!"print('shell=True')".contains("subprocess.run("));
     }
     #[test]
     fn scan_fixture() {

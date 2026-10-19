@@ -35,8 +35,8 @@ jobs:
       - name: Package Skill
         shell: bash
         run: |
-          python3 tools/skill_dist.py package --binary "${{ matrix.binary }}" --platform "${{ matrix.platform }}" --output "dist/repodoctor-v0.1.0-${{ matrix.platform }}.zip"
-          python3 tools/skill_dist.py verify "dist/repodoctor-v0.1.0-${{ matrix.platform }}.zip"
+          python3 tools/skill_dist.py package --binary "${{ matrix.binary }}" --platform "${{ matrix.platform }}" --output "dist/repodoctor-v0.2.0-${{ matrix.platform }}.zip"
+          python3 tools/skill_dist.py verify "dist/repodoctor-v0.2.0-${{ matrix.platform }}.zip"
       - uses: actions/upload-artifact@v4
         with:
           name: repodoctor-${{ matrix.platform }}
