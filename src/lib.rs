@@ -1,4 +1,5 @@
 pub mod sarif;
+pub mod pet;
 use std::fs;
 use std::path::{Path, PathBuf};
 
