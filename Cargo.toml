@@ -8,3 +8,7 @@ description = "Rust-first portable Skill runtime and diagnostics"
 [[bin]]
 name = "repodoctor"
 path = "src/bin/repodoctor.rs"
+
+[[bin]]
+name = "vibepet"
+path = "src/bin/vibepet.rs"

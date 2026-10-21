@@ -1,3 +1,23 @@
-# VibeCoding Pet Skill (planned)
+# VibeCoding Pet｜开发路线
 
-Consume opt-in local IDE/CLI lifecycle events, normalize Vibe Coding agent states, emit a portable event schema, and render playful virtual-pet status on web or ESP32 devices. No recording of prompts, code, tokens or secrets by default. Planned independent Skill.
+## v0.1.0：本次 MVP
+
+- [x] Rust 状态机，事件映射到心情、能量、快乐、经验、等级与连续完成次数
+- [x] 127.0.0.1 本机 HTTP 事件/状态端点，严格限制 Host/Origin/事件白名单
+- [x] 中文响应式网页宠物、表情动画、投喂/打气、最近事件及来源标识
+- [x] CodeArts CLI / OpenCode Hook 适配器，用户授权后选择性安装
+- [x] 零第三方 Cargo 依赖、中文 SKILL.md、独立可验证 ZIP、自动化测试
+- [ ] 实际用户 CodeArts CLI / OpenCode Hook 端到端验证
+- [ ] 根据 CI 结果发行 v0.1.0 GitHub Release
+- [ ] 必要时经用户授权提交市场并等待审核
+
+## v0.2.0 计划
+
+- [ ] 用户明确选择后的本地持久化与备份恢复
+- [ ] 更严格的 Hook 来源鉴权与事件去重
+- [ ] 多种造型、角色表情包和成长玩法
+- [ ] ESP32-S3 本地宠物屏幕/灯效桥接，不能提前声称支持硬件
+
+## 质量门槛
+
+不得上传代码、提示词、工具输出、密钥、Session ID；模拟事件不冒充真实 Hook；会话结束不推断为任务成功；Hook 不应阻塞 Agent；本地 UI 应当能离线运行并在退出后清除数据。

@@ -18,6 +18,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
@@ -31,6 +34,8 @@ jobs:
         run: python -m unittest discover -s tests -p 'test_*.py' -v
       - name: Validate Skill frontmatter
         run: python tools/skill_dist.py validate
+      - name: VibeCoding Pet hook privacy tests
+        run: node --test tests/test_vibepet_plugins.mjs
       - name: Build release
         run: cargo build --release --locked
       - name: Package and verify native Skill distribution
@@ -53,6 +58,30 @@ jobs:
           name: repodoctor-v0.2.0-${{ runner.os }}-${{ runner.arch }}
           path: dist/*.zip
           if-no-files-found: error
+      - name: Package and verify VibeCoding Pet Skill
+        shell: bash
+        run: |
+          case "$RUNNER_OS" in
+            Windows) platform=windows-x86_64; binary=target/release/vibepet.exe ;;
+            macOS)   arch=$(uname -m); if [ "$arch" = arm64 ]; then arch=aarch64; fi; platform=macos-$arch; binary=target/release/vibepet ;;
+            Linux)   platform=linux-x86_64; binary=target/release/vibepet ;;
+            *) exit 2 ;;
+          esac
+          base="dist/vibecoding-pet-v0.1.0-$platform"
+          python tools/vibepet_dist.py package --binary "$binary" --platform "$platform" --output "$base.zip"
+          python tools/vibepet_dist.py package --binary "$binary" --platform "$platform" --output "$base-codearts.zip" --codearts
+          python tools/vibepet_dist.py verify "$base.zip"
+          python tools/vibepet_dist.py verify "$base-codearts.zip"
+      - name: Upload VibeCoding Pet package
+        uses: actions/upload-artifact@v4
+        with:
+          name: vibepet-v0.1.0-${{ runner.os }}-${{ runner.arch }}
+          path: dist/vibecoding-pet-*.zip
+          if-no-files-found: error
+      - name: VibeCoding Pet real HTTP and CLI acceptance
+        env:
+          VIBEPET_BIN: ${{ github.workspace }}/target/release/vibepet${{ runner.os == 'Windows' && '.exe' || '' }}
+        run: python -m unittest discover -s tests -p 'test_vibepet_http.py' -v
       - name: Validate skill using Rust CLI
         shell: bash
         run: target/release/repodoctor${{ runner.os == 'Windows' && '.exe' || '' }} validate-skill skills/repodoctor
