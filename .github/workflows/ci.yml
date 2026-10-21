@@ -63,7 +63,7 @@ jobs:
         run: |
           case "$RUNNER_OS" in
             Windows) platform=windows-x86_64; binary=target/release/vibepet.exe ;;
-            macOS)   platform=macos-$(uname -m); binary=target/release/vibepet ;;
+            macOS)   arch=$(uname -m); if [ "$arch" = arm64 ]; then arch=aarch64; fi; platform=macos-$arch; binary=target/release/vibepet ;;
             Linux)   platform=linux-x86_64; binary=target/release/vibepet ;;
             *) exit 2 ;;
           esac
