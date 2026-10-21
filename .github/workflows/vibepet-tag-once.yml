@@ -1,0 +1,41 @@
+name: vibepet-v0.1.0-tag-and-release-once
+on:
+  push:
+    branches: [main]
+    paths: [".github/workflows/vibepet-tag-once.yml"]
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  publish-preview:
+    if: github.repository == 'hu-qi/rednote-skills'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify preview version and tag absence
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$(grep '^VERSION = ' tools/vibepet_dist.py)" = 'VERSION = "0.1.0"'
+          if gh api repos/"$GITHUB_REPOSITORY"/git/ref/tags/vibepet/v0.1.0 >/dev/null 2>&1; then
+            echo 'Tag already exists; refusing to replace an immutable release.'
+            exit 1
+          fi
+      - name: Create preview release tag and dispatch cross-platform packaging
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api --method POST repos/"$GITHUB_REPOSITORY"/git/refs \
+            -f ref='refs/tags/vibepet/v0.1.0' -f sha="$GITHUB_SHA" >/dev/null
+          # A tag created with GITHUB_TOKEN does not trigger push pipelines.
+          gh workflow run vibepet-release.yml --ref 'vibepet/v0.1.0'
+          echo 'v0.1.0 preview tag created and release workflow dispatched.'
