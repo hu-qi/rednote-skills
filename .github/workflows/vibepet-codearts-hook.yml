@@ -1,0 +1,88 @@
+name: vibecoding-pet-real-codearts-hook
+on:
+  push:
+    branches: [main]
+    paths: [".github/workflows/vibepet-codearts-hook.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+concurrency:
+  group: vibepet-codearts-hook
+  cancel-in-progress: false
+
+jobs:
+  verify-codearts-hook:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build local Rust pet
+        run: cargo build --release --locked --bin vibepet
+      - name: Install user-opt-in CodeArts plugin in disposable CI workspace
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .codeartsdoer/plugins .codeartsdoer/skills/vibecoding-pet/bin
+          cp skills/vibecoding-pet/adapters/codearts-plugin.js .codeartsdoer/plugins/vibecoding-pet.js
+          cp skills/vibecoding-pet/SKILL.md .codeartsdoer/skills/vibecoding-pet/SKILL.md
+          install -m 755 target/release/vibepet .codeartsdoer/skills/vibecoding-pet/bin/vibepet
+          echo 'CodeArts pet plugin and Skill installed in ephemeral workspace.'
+      - name: Install official CodeArts CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          installer="${RUNNER_TEMP}/codearts-install.sh"
+          curl --fail --location --show-error --silent --retry 3 --max-time 90 \
+            "https://cnnorth4-cloudide-marketplace.obs.cn-north-4.myhuaweicloud.com/codearts/cli_tui/install_script/install.sh" \
+            --output "$installer"
+          test -s "$installer"
+          timeout 180 sh "$installer"
+          echo "$HOME/.codeartsdoer/installers" >> "$GITHUB_PATH"
+      - name: Trust only disposable GitHub runner workspace
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          base = Path.home() / ".codeartsdoer/cli-data"
+          base.mkdir(parents=True, exist_ok=True)
+          settings = base / "settings.json"
+          config = json.loads(settings.read_text()) if settings.exists() else {}
+          config.setdefault("security", {}).setdefault("folderTrust", {})["enabled"] = False
+          settings.write_text(json.dumps(config), encoding="utf-8")
+          settings.chmod(0o600)
+          print("Ephemeral folder trust configured; sandbox remains enabled.")
+          PY
+      - name: Verify CodeArts CLI and Skill registration
+        shell: bash
+        run: |
+          set -euo pipefail
+          codearts --version
+          if codearts debug skill > "${RUNNER_TEMP}/vibepet-skills.txt" 2>/dev/null; then
+            grep -qi vibecoding-pet "${RUNNER_TEMP}/vibepet-skills.txt"
+            echo 'CodeArts Skill discovery: vibecoding-pet registered'
+          else
+            echo 'CodeArts debug skill unavailable; continuing with real hook runtime test.'
+          fi
+      - name: Execute a benign real CodeArts CLI session and verify hook events
+        shell: bash
+        env:
+          CODEARTS_CLI_AK: ${{ secrets.AK }}
+          CODEARTS_CLI_SK: ${{ secrets.SK }}
+          CODEARTS_PRIMARY_MODEL: ${{ vars.CODEARTS_PRIMARY_MODEL || 'huaweicloud-maas/glm-5.3' }}
+        run: |
+          set -euo pipefail
+          python3 tools/vibepet_codearts_smoke.py
+      - name: Upload sanitized hook-verification status
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vibepet-codearts-hook-${{ github.run_id }}
+          path: ${{ runner.temp }}/vibepet-codearts-result.json
+          if-no-files-found: warn
+          retention-days: 14
