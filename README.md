@@ -1,6 +1,6 @@
 # Rednote Skills｜开源 Agent Skills
 
-Rust-first、可复用、可独立分发的 Agent Skills。当前已实现并公开发布 **RepoDoctor**；VibeCoding Pet 和 Rednote Creator Lab 仍在规划阶段。
+Rust-first、可复用、可独立分发的 Agent Skills。**RepoDoctor** 已发布并通过 CodeArts CLI 真实调用验证；**VibeCoding Pet** 正在实现首个可运行的 v0.1.0 MVP；Rednote Creator Lab 仍在规划。
 
 ## RepoDoctor｜代码仓库风险体检
 
@@ -30,6 +30,25 @@ cargo test --all-targets
 **能力边界：** 目前只提供启发式静态风险线索，**并不等同于已确认漏洞**；不执行目标代码、不上传、不自动修复。扫描结果为零也不意味着仓库绝对安全。
 
 [Skill 使用说明](skills/repodoctor/SKILL.md) · [分发流程](docs/RELEASE.md) · [赛事验收](docs/COMPETITION.md) · [项目路线图](docs/TODO.md)
+
+## VibeCoding Pet v0.1.0｜陪你写代码的小宠物
+
+第二个独立 Skill 的首个 MVP：**Rust 本机事件服务 + CodeArts/OpenCode Hook 适配器 + 可视化动画宠物**。支持 Agent 思考、工具运行、等待审批、错误和休息状态；提供互动投喂、快乐值、能量、经验等级和来源明确的演示事件。
+
+```bash
+cargo run --bin vibepet -- serve
+# 浏览器打开 http://127.0.0.1:7878
+```
+
+```bash
+# 第二个终端：仅作演示，不冒充真实 Agent
+cargo run --bin vibepet -- emit tool_start --source demo
+cargo run --bin vibepet -- emit tool_done --source demo
+```
+
+CodeArts CLI / OpenCode Hook 需要用户明确许可后手动安装；它们只发送固定的事件类型，不读取代码、提示词、工具输出或密钥。完整使用说明：[VibeCoding Pet Skill](skills/vibecoding-pet/SKILL.md) · [技术架构与测试](docs/VIBEPET.md)。
+
+**当前状态：** MVP 开发与 CI 阶段。Hook 已按官方插件接口实现，用户环境的真实事件投递和市场上架尚未核实；ESP32 硬件控制、进度持久化等属于后续版本，不将其当成已实现功能。
 
 ## English
 
