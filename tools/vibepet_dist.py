@@ -138,7 +138,9 @@ def verify(package):
     expected = set(FILES) | {"bin/" + exe}
     if set(payload) != expected or manifest.get("entrypoint") != "bin/" + exe:
         raise ValueError("wrong payload or executable")
-    if not payload["SKILL.md"].startswith(b"---\nname: vibecoding-pet\n"):
+    # Windows checkout may use CRLF even though Skill frontmatter is valid.
+    header = payload["SKILL.md"].decode("utf-8").replace("\r\n", "\n")
+    if not header.startswith("---\nname: vibecoding-pet\n"):
         raise ValueError("invalid Skill frontmatter")
     return manifest
 
